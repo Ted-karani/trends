@@ -5,3 +5,4 @@ python-dotenv
 apscheduler
 pytrends
 groq
+urllib3==1.26.18

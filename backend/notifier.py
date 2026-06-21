@@ -14,7 +14,7 @@ def send_notification(title, message):
             headers={
                 "Title": title,
                 "Priority": "default",
-                "Tags": "fire"
+                "Content-Type": "text/plain; charset=utf-8"
             },
             timeout=10
         )
@@ -25,4 +25,4 @@ def send_notification(title, message):
 def notify_trending(summary):
     if not summary:
         return
-    send_notification("🔥 What's Trending Now", summary)
+    send_notification("Trending Now", summary)
