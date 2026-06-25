@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+requests = "*"
+python-dotenv = "*"
+apscheduler = "*"
+pytrends = "*"
+groq = "*"
+urllib3 = "==1.26.18"
+edge-tts = "*"
+ffmpeg-python = "*"
+pillow = "*"
+pydantic = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
+python_full_version = "3.12.3"

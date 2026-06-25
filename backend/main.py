@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from youtube import get_trending, CATEGORIES
 from google_trends import get_google_trends
@@ -33,6 +34,19 @@ from collab_finder import find_collab_opportunities
 from lifecycle import analyze_trend_lifecycle
 from api_monitor import get_full_health_report
 from video_blueprint import generate_video_blueprint
+from video_generator import generate_video
+from content_calendar import generate_content_calendar
+from event_radar import get_event_radar
+from comment_intelligence import analyze_comments
+from search_spy import find_untapped_opportunities
+from music_trends import get_trending_music
+from trend_translator import translate_trend
+from daily_challenge import get_daily_challenge
+from multiplatform import generate_multiplatform_content
+from audience_intelligence import get_audience_intelligence
+from brand_builder import build_personal_brand
+from format_analyzer import analyze_best_format
+from trend_academy import get_personalized_lessons
 from storage import (
     add_competitor_channel, remove_competitor_channel,
     get_competitor_channels, save_hook
@@ -76,6 +90,20 @@ class ChannelRequest(BaseModel):
     name: str
     description: str = ""
     thumbnail: str = ""
+
+class BrandRequest(BaseModel):
+    channel_name: str
+    niche: str
+    style: str = "energetic"
+
+class MultiplatformRequest(BaseModel):
+    video_title: str
+    script: str
+    hashtags: list = []
+
+class VideoGenerateRequest(BaseModel):
+    video_id: str
+    region: str = "KE"
 
 @app.get("/")
 def root():
@@ -128,7 +156,40 @@ def production_guide(video_id: str, region="KE"):
     package = generate_content_package(video, region=region)
     guide = get_production_guide(video, package)
     blueprint = generate_video_blueprint(video, package)
-    return {"guide": guide, "package": package, "video": video, "blueprint": blueprint}
+    multiplatform = generate_multiplatform_content(
+        video["title"],
+        package.get("script", ""),
+        package.get("hashtags", []),
+        region=region
+    )
+    return {
+        "guide": guide,
+        "package": package,
+        "video": video,
+        "blueprint": blueprint,
+        "multiplatform": multiplatform
+    }
+
+@app.post("/generate-video")
+def generate_video_endpoint(request: VideoGenerateRequest):
+    youtube = get_trending(region_code=request.region)
+    video = next((v for v in youtube if v["id"] == request.video_id), None)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    package = generate_content_package(video, region=request.region)
+    script = package.get("script", video["title"])
+    output_path, error = generate_video(
+        trend_title=video["title"],
+        script=script,
+        search_query=video["title"]
+    )
+    if error:
+        raise HTTPException(status_code=500, detail=error)
+    return FileResponse(
+        output_path,
+        media_type="video/mp4",
+        filename=f"trend_video_{video['id']}.mp4"
+    )
 
 @app.get("/briefing")
 def briefing(region="KE"):
@@ -159,7 +220,11 @@ def localize(video_id: str, region="KE", target="Kenya"):
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     package = generate_content_package(video, region=region)
-    localized = localize_trend(video["title"], package.get("trend_explanation", ""), target_region=target)
+    localized = localize_trend(
+        video["title"],
+        package.get("trend_explanation", ""),
+        target_region=target
+    )
     return {"localized": localized, "video": video}
 
 @app.get("/cross-language")
@@ -176,12 +241,20 @@ def time_machine(region="KE"):
 
 @app.post("/improve-script")
 def improve_script_endpoint(request: ScriptRequest, region="KE"):
-    improved = improve_script(request.script, niche=request.niche, target_region=region)
+    improved = improve_script(
+        request.script,
+        niche=request.niche,
+        target_region=region
+    )
     return {"improved": improved}
 
 @app.post("/repurpose")
 def repurpose(request: RepurposeRequest):
-    repurposed = repurpose_content(request.video_title, request.video_description, request.niche)
+    repurposed = repurpose_content(
+        request.video_title,
+        request.video_description,
+        request.niche
+    )
     return {"repurposed": repurposed}
 
 @app.get("/hooks")
@@ -199,7 +272,10 @@ def search_intent(topic: str):
 
 @app.get("/competitors")
 def competitors():
-    return {"channels": get_competitor_channels(), "data": get_all_competitor_data()}
+    return {
+        "channels": get_competitor_channels(),
+        "data": get_all_competitor_data()
+    }
 
 @app.post("/competitors/add")
 def add_competitor(channel: ChannelRequest):
@@ -224,8 +300,11 @@ def predict(region="KE"):
 @app.post("/growth-simulator")
 def growth_sim(request: GrowthRequest, region="KE"):
     simulation = simulate_growth(
-        request.subscribers, request.avg_views,
-        request.posts_per_week, request.niche, region
+        request.subscribers,
+        request.avg_views,
+        request.posts_per_week,
+        request.niche,
+        region
     )
     return {"simulation": simulation}
 
@@ -241,7 +320,11 @@ def monetization(region="KE"):
 
 @app.post("/collab-finder")
 def collab(request: CollabRequest, region="KE"):
-    collabs = find_collab_opportunities(request.niche, request.subscribers, region)
+    collabs = find_collab_opportunities(
+        request.niche,
+        request.subscribers,
+        region
+    )
     return {"collabs": collabs}
 
 @app.get("/lifecycle")
@@ -251,6 +334,69 @@ def lifecycle(topic: str, velocity: int = 0, views: int = 0):
 @app.get("/health")
 def health():
     return get_full_health_report()
+
+@app.get("/calendar")
+def calendar(region="KE"):
+    return {"calendar": generate_content_calendar(region=region)}
+
+@app.get("/events")
+def events(region="KE"):
+    return get_event_radar(region=region)
+
+@app.get("/comment-intelligence")
+def comment_intelligence(video_id: str):
+    youtube = get_trending()
+    video = next((v for v in youtube if v["id"] == video_id), None)
+    title = video["title"] if video else ""
+    return analyze_comments(video_id, title)
+
+@app.get("/search-spy")
+def search_spy(region="KE"):
+    return {"opportunities": find_untapped_opportunities(region=region)}
+
+@app.get("/music-trends")
+def music_trends(region="KE"):
+    return get_trending_music(region=region)
+
+@app.get("/translate-trend")
+def translate(topic: str, region="KE"):
+    return translate_trend(topic, region=region)
+
+@app.get("/daily-challenge")
+def daily_challenge(region="KE"):
+    return get_daily_challenge(region=region)
+
+@app.post("/multiplatform")
+def multiplatform(request: MultiplatformRequest, region="KE"):
+    content = generate_multiplatform_content(
+        request.video_title,
+        request.script,
+        request.hashtags,
+        region=region
+    )
+    return {"content": content}
+
+@app.get("/audience-intelligence")
+def audience_intelligence():
+    return get_audience_intelligence()
+
+@app.post("/brand-builder")
+def brand_builder(request: BrandRequest, region="KE"):
+    brand = build_personal_brand(
+        request.channel_name,
+        request.niche,
+        region=region,
+        style=request.style
+    )
+    return {"brand": brand}
+
+@app.get("/format-analyzer")
+def format_analyzer(topic: str):
+    return analyze_best_format(topic, {})
+
+@app.get("/academy")
+def academy(region="KE"):
+    return get_personalized_lessons(region=region)
 
 @app.get("/notify")
 def notify(category="0", region="KE"):
