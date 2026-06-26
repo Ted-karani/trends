@@ -24,16 +24,12 @@ export default function App() {
   const [region, setRegion] = useState("KE")
   const [notified, setNotified] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
-
   const [briefing, setBriefing] = useState(null)
   const [briefingLoading, setBriefingLoading] = useState(false)
-
   const [opportunities, setOpportunities] = useState(null)
   const [oppsLoading, setOppsLoading] = useState(false)
-
   const [summary, setSummary] = useState("")
   const [summaryLoading, setSummaryLoading] = useState(false)
-
   const [googleTrends, setGoogleTrends] = useState([])
   const [news, setNews] = useState([])
   const [viralAlerts, setViralAlerts] = useState([])
@@ -44,31 +40,44 @@ export default function App() {
   const [monetization, setMonetization] = useState(null)
   const [health, setHealth] = useState(null)
   const [hooks, setHooks] = useState([])
-
+  const [calendar, setCalendar] = useState([])
+  const [events, setEvents] = useState(null)
+  const [musicTrends, setMusicTrends] = useState(null)
+  const [searchSpyData, setSearchSpyData] = useState([])
+  const [dailyChallenge, setDailyChallenge] = useState(null)
+  const [audienceIntel, setAudienceIntel] = useState(null)
+  const [academy, setAcademy] = useState(null)
   const [competitors, setCompetitors] = useState([])
   const [competitorSearch, setCompetitorSearch] = useState("")
   const [competitorResults, setCompetitorResults] = useState([])
   const [competitorData, setCompetitorData] = useState([])
-
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [contentPackage, setContentPackage] = useState(null)
   const [productionGuide, setProductionGuide] = useState(null)
   const [blueprint, setBlueprint] = useState(null)
+  const [multiplatform, setMultiplatform] = useState(null)
   const [contentLoading, setContentLoading] = useState(false)
   const [activeContentTab, setActiveContentTab] = useState("script")
-
+  const [videoGenerating, setVideoGenerating] = useState(false)
+  const [videoUrl, setVideoUrl] = useState(null)
   const [scriptInput, setScriptInput] = useState("")
   const [improvedScript, setImprovedScript] = useState(null)
   const [scriptLoading, setScriptLoading] = useState(false)
-
   const [repurposeInput, setRepurposeInput] = useState("")
   const [repurposed, setRepurposed] = useState(null)
   const [repurposeLoading, setRepurposeLoading] = useState(false)
-
+  const [translateInput, setTranslateInput] = useState("")
+  const [translated, setTranslated] = useState(null)
+  const [translateLoading, setTranslateLoading] = useState(false)
+  const [commentVideoId, setCommentVideoId] = useState("")
+  const [commentAnalysis, setCommentAnalysis] = useState(null)
+  const [commentLoading, setCommentLoading] = useState(false)
+  const [brandForm, setBrandForm] = useState({ channel_name: "funny_needs_help", niche: "general", style: "energetic" })
+  const [brandResult, setBrandResult] = useState(null)
+  const [brandLoading, setBrandLoading] = useState(false)
   const [growthForm, setGrowthForm] = useState({ subscribers: 0, avg_views: 0, posts_per_week: 1, niche: "general" })
   const [growthResult, setGrowthResult] = useState(null)
   const [growthLoading, setGrowthLoading] = useState(false)
-
   const [collabForm, setCollabForm] = useState({ niche: "general", subscribers: 0 })
   const [collabResult, setCollabResult] = useState(null)
   const [collabLoading, setCollabLoading] = useState(false)
@@ -117,18 +126,39 @@ export default function App() {
     } catch (err) { console.error(err) }
   }
 
+  const fetchCalendarAndEvents = async () => {
+    try {
+      const [calRes, evRes, musRes, spyRes, chalRes] = await Promise.all([
+        axios.get(`${API}/calendar`, { params: { region } }),
+        axios.get(`${API}/events`, { params: { region } }),
+        axios.get(`${API}/music-trends`, { params: { region } }),
+        axios.get(`${API}/search-spy`, { params: { region } }),
+        axios.get(`${API}/daily-challenge`, { params: { region } })
+      ])
+      setCalendar(calRes.data.calendar || [])
+      setEvents(evRes.data)
+      setMusicTrends(musRes.data)
+      setSearchSpyData(spyRes.data.opportunities || [])
+      setDailyChallenge(chalRes.data)
+    } catch (err) { console.error(err) }
+  }
+
   const fetchIntelligence = async () => {
     try {
-      const [clRes, tmRes, nRes, mRes] = await Promise.all([
+      const [clRes, tmRes, nRes, mRes, audRes, acadRes] = await Promise.all([
         axios.get(`${API}/cross-language`),
         axios.get(`${API}/time-machine`, { params: { region } }),
         axios.get(`${API}/niches`, { params: { region } }),
-        axios.get(`${API}/monetization`, { params: { region } })
+        axios.get(`${API}/monetization`, { params: { region } }),
+        axios.get(`${API}/audience-intelligence`),
+        axios.get(`${API}/academy`, { params: { region } })
       ])
       setCrossLanguage(clRes.data)
       setTimeMachine(tmRes.data)
       setNiches(nRes.data.niches || [])
       setMonetization(mRes.data.insights)
+      setAudienceIntel(audRes.data)
+      setAcademy(acadRes.data)
     } catch (err) { console.error(err) }
   }
 
@@ -183,17 +213,37 @@ export default function App() {
     setContentPackage(null)
     setProductionGuide(null)
     setBlueprint(null)
+    setMultiplatform(null)
+    setVideoUrl(null)
     setContentLoading(true)
     setActiveView("content")
     try {
-      const res = await axios.get(`${API}/production-guide`, {
-        params: { video_id: video.id, region }
-      })
+      const res = await axios.get(`${API}/production-guide`, { params: { video_id: video.id, region } })
       setContentPackage(res.data.package)
       setProductionGuide(res.data.guide)
       setBlueprint(res.data.blueprint)
+      setMultiplatform(res.data.multiplatform)
     } catch (err) { console.error(err) }
     setContentLoading(false)
+  }
+
+  const generateVideo = async () => {
+    if (!selectedVideo) return
+    setVideoGenerating(true)
+    setVideoUrl(null)
+    try {
+      const res = await axios.post(
+        `${API}/generate-video`,
+        { video_id: selectedVideo.id, region },
+        { responseType: "blob", timeout: 180000 }
+      )
+      const url = URL.createObjectURL(new Blob([res.data], { type: "video/mp4" }))
+      setVideoUrl(url)
+    } catch (err) {
+      console.error(err)
+      alert("Video generation failed. Make sure FFmpeg and edge-tts are installed on the server.")
+    }
+    setVideoGenerating(false)
   }
 
   const improveScript = async () => {
@@ -214,6 +264,35 @@ export default function App() {
       setRepurposed(res.data.repurposed)
     } catch (err) { console.error(err) }
     setRepurposeLoading(false)
+  }
+
+  const translateTrend = async () => {
+    if (!translateInput.trim()) return
+    setTranslateLoading(true)
+    try {
+      const res = await axios.get(`${API}/translate-trend`, { params: { topic: translateInput, region } })
+      setTranslated(res.data)
+    } catch (err) { console.error(err) }
+    setTranslateLoading(false)
+  }
+
+  const analyzeComments = async () => {
+    if (!commentVideoId.trim()) return
+    setCommentLoading(true)
+    try {
+      const res = await axios.get(`${API}/comment-intelligence`, { params: { video_id: commentVideoId } })
+      setCommentAnalysis(res.data)
+    } catch (err) { console.error(err) }
+    setCommentLoading(false)
+  }
+
+  const buildBrand = async () => {
+    setBrandLoading(true)
+    try {
+      const res = await axios.post(`${API}/brand-builder`, brandForm, { params: { region } })
+      setBrandResult(res.data.brand)
+    } catch (err) { console.error(err) }
+    setBrandLoading(false)
   }
 
   const simulateGrowth = async () => {
@@ -256,19 +335,21 @@ export default function App() {
     if (activeView === "competitors") fetchCompetitors()
     if (activeView === "health") fetchHealth()
     if (activeView === "hooks") fetchHooks()
+    if (activeView === "calendar") fetchCalendarAndEvents()
   }, [activeView])
 
   const views = [
     { id: "briefing", label: "Briefing" },
     { id: "opportunities", label: "Opportunities" },
     { id: "trends", label: "Trends" },
+    { id: "calendar", label: "Calendar" },
     { id: "intelligence", label: "Intelligence" },
     { id: "content", label: "Content Studio" },
     { id: "tools", label: "Tools" },
     { id: "competitors", label: "Competitors" },
     { id: "growth", label: "Growth" },
     { id: "hooks", label: "Hooks" },
-    { id: "health", label: "API Health" }
+    { id: "health", label: "Health" }
   ]
 
   return (
@@ -277,11 +358,9 @@ export default function App() {
         <div className="header-top">
           <h1>Trend Radar</h1>
           {lastUpdated && <span className="last-updated">Updated {lastUpdated}</span>}
-          {viralAlerts.length > 0 && (
-            <span className="viral-badge">{viralAlerts.length} VIRAL</span>
-          )}
+          {viralAlerts.length > 0 && <span className="viral-badge">{viralAlerts.length} VIRAL</span>}
         </div>
-        <p>YouTube · Google · News · AI Powered</p>
+        <p>YouTube · Google · News · Sports · AI Powered</p>
         <div className="header-controls">
           <select value={region} onChange={e => setRegion(e.target.value)}>
             {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -295,11 +374,7 @@ export default function App() {
 
       <nav className="nav">
         {views.map(v => (
-          <button
-            key={v.id}
-            className={activeView === v.id ? "active" : ""}
-            onClick={() => setActiveView(v.id)}
-          >
+          <button key={v.id} className={activeView === v.id ? "active" : ""} onClick={() => setActiveView(v.id)}>
             {v.label}
           </button>
         ))}
@@ -309,6 +384,13 @@ export default function App() {
 
         {activeView === "briefing" && (
           <div className="view">
+            {dailyChallenge && (
+              <div className="challenge-banner">
+                <span className="challenge-label">Today's Challenge</span>
+                <span className="challenge-title">{dailyChallenge.challenge_title}</span>
+                <span className="challenge-diff">{dailyChallenge.difficulty}</span>
+              </div>
+            )}
             {briefingLoading ? (
               <div className="loading-box"><div className="pulse"></div><p>Generating morning briefing...</p></div>
             ) : briefing ? (
@@ -461,49 +543,219 @@ export default function App() {
           </div>
         )}
 
+        {activeView === "calendar" && (
+          <div className="view">
+            {dailyChallenge && (
+              <div className="challenge-full">
+                <div className="challenge-header-full">
+                  <h3>{dailyChallenge.challenge_title}</h3>
+                  <span className="challenge-diff-badge">{dailyChallenge.difficulty}</span>
+                </div>
+                <p className="challenge-body">{dailyChallenge.the_challenge}</p>
+                <div className="challenge-meta">
+                  <div><span className="meta-label">Time</span><span>{dailyChallenge.time_to_complete}</span></div>
+                  <div><span className="meta-label">Trend</span><span>{dailyChallenge.trend_connection}</span></div>
+                </div>
+                {dailyChallenge.script_starter && (
+                  <div className="challenge-script">
+                    <span className="meta-label">Script Starter</span>
+                    <p>{dailyChallenge.script_starter}</p>
+                  </div>
+                )}
+                <div className="challenge-tip">
+                  <span className="pro-tip-label">Pro Tip</span>
+                  <p>{dailyChallenge.pro_tip}</p>
+                </div>
+              </div>
+            )}
+            <h3 className="section-label" style={{marginTop: "1.5rem"}}>7-Day Content Calendar</h3>
+            <div className="calendar-grid">
+              {calendar.map((day, i) => (
+                <div key={i} className="calendar-card">
+                  <div className="cal-day">{day.day}</div>
+                  <div className="cal-type">{day.type}</div>
+                  <p className="cal-topic">{day.topic}</p>
+                  <p className="cal-angle">{day.angle}</p>
+                  <div className="cal-footer">
+                    <span className="cal-time">{day.best_time}</span>
+                    <span className="cal-views">{day.predicted_views}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {events && (
+              <div className="events-section">
+                <h3 className="section-label" style={{marginTop: "1.5rem"}}>Sports Event Radar</h3>
+                {events.live_matches && events.live_matches.length > 0 && (
+                  <div className="live-matches">
+                    <h4 className="live-label">LIVE NOW</h4>
+                    {events.live_matches.map((match, i) => (
+                      <div key={i} className="match-card live">
+                        <span className="match-teams">{match.home} vs {match.away}</span>
+                        <span className="match-score">{match.score}</span>
+                        <span className="match-comp">{match.competition}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="upcoming-matches">
+                  {events.upcoming_matches && events.upcoming_matches.slice(0,5).map((match, i) => (
+                    <div key={i} className="match-card">
+                      <span className="match-teams">{match.home} vs {match.away}</span>
+                      <span className="match-comp">{match.competition}</span>
+                    </div>
+                  ))}
+                </div>
+                {events.content_ideas && events.content_ideas.length > 0 && (
+                  <div>
+                    <h4 className="section-label" style={{marginTop: "1rem"}}>Content Ideas from Events</h4>
+                    {events.content_ideas.map((idea, i) => (
+                      <div key={i} className="event-idea-card">
+                        <p className="event-idea-title">{idea.content_idea}</p>
+                        <p className="event-idea-hook">{idea.hook}</p>
+                        <div className="event-idea-meta">
+                          <span>{idea.best_time_to_post}</span>
+                          <span>{idea.predicted_views}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {musicTrends && musicTrends.analysis && (
+              <div className="music-section">
+                <h3 className="section-label" style={{marginTop: "1.5rem"}}>Music Trends</h3>
+                <div className="music-analysis">
+                  <div className="music-hot">
+                    <span className="meta-label">Hottest Song</span>
+                    <p>{musicTrends.analysis.hottest_song}</p>
+                  </div>
+                  <div className="music-sounds">
+                    <span className="meta-label">Sounds to Use in Your Shorts</span>
+                    <div className="sounds-list">
+                      {musicTrends.analysis.sounds_to_use && musicTrends.analysis.sounds_to_use.map((s, i) => (
+                        <span key={i} className="sound-tag">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {searchSpyData.length > 0 && (
+              <div className="spy-section">
+                <h3 className="section-label" style={{marginTop: "1.5rem"}}>YouTube Search Spy</h3>
+                <div className="spy-grid">
+                  {searchSpyData.slice(0,6).map((opp, i) => (
+                    <div key={i} className="spy-card">
+                      <div className="spy-header">
+                        <span className="spy-topic">{opp.topic}</span>
+                        <span className="spy-diff">{opp.difficulty}</span>
+                      </div>
+                      <div className="spy-stats">
+                        <span>Only {opp.video_count} videos exist</span>
+                        <span>Score: {opp.opportunity_score}/100</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeView === "intelligence" && (
           <div className="view">
+            {audienceIntel && audienceIntel.analysis && (
+              <div className="audience-section">
+                <h3 className="section-label">Your Channel Intelligence</h3>
+                <div className="audience-grid">
+                  {audienceIntel.channel_stats && (
+                    <div className="audience-stats">
+                      <div className="stat-box"><span className="stat-num">{Number(audienceIntel.channel_stats.subscribers || 0).toLocaleString()}</span><span className="stat-label">Subscribers</span></div>
+                      <div className="stat-box"><span className="stat-num">{Number(audienceIntel.channel_stats.total_views || 0).toLocaleString()}</span><span className="stat-label">Total Views</span></div>
+                      <div className="stat-box"><span className="stat-num">{audienceIntel.channel_stats.video_count || 0}</span><span className="stat-label">Videos</span></div>
+                    </div>
+                  )}
+                  <div className="intel-card">
+                    <div className="intel-header">
+                      <span className="intel-trend">Health: {audienceIntel.analysis.channel_health}</span>
+                      <span className="intel-badge badge-medium">{audienceIntel.analysis.growth_stage}</span>
+                    </div>
+                    <p className="intel-reason">{audienceIntel.analysis["30_day_plan"]}</p>
+                  </div>
+                  <div className="intel-card">
+                    <h4>Immediate Actions</h4>
+                    {audienceIntel.analysis.immediate_actions && audienceIntel.analysis.immediate_actions.map((action, i) => (
+                      <div key={i} className="checklist-item"><span className="check">→</span><span>{action}</span></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {academy && (
+              <div className="academy-section">
+                <h3 className="section-label">Trend Academy</h3>
+                {academy.this_weeks_focus && (
+                  <div className="academy-focus">
+                    <span className="focus-label">This Week's Focus</span>
+                    <p>{academy.this_weeks_focus}</p>
+                  </div>
+                )}
+                <div className="lessons-grid">
+                  {academy.lessons && academy.lessons.map((lesson, i) => (
+                    <div key={i} className="lesson-card">
+                      <div className="lesson-header">
+                        <span className="lesson-num">Lesson {lesson.lesson_number}</span>
+                        <span className="lesson-skill">{lesson.skill}</span>
+                      </div>
+                      <h4>{lesson.title}</h4>
+                      <p className="lesson-why">{lesson.why_important}</p>
+                      <p className="lesson-content">{lesson.lesson_content}</p>
+                      <div className="lesson-exercise">
+                        <span className="exercise-label">Exercise</span>
+                        <p>{lesson.exercise}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {academy.motivation && <div className="motivation-box"><p>{academy.motivation}</p></div>}
+              </div>
+            )}
             <div className="intel-grid">
               <div className="intel-section">
                 <h3 className="section-label">Cross-Language Trends</h3>
                 {crossLanguage ? (
-                  <div>
-                    {crossLanguage.analysis && crossLanguage.analysis.map((item, i) => (
-                      <div key={i} className="intel-card">
-                        <div className="intel-header">
-                          <span className="intel-trend">{item.trend}</span>
-                          <span className={"intel-badge badge-" + item.crossover_potential.toLowerCase()}>{item.crossover_potential} crossover</span>
-                        </div>
-                        <p className="intel-lang">{item.language}</p>
-                        <p className="intel-reason">{item.reason}</p>
-                        <p className="intel-angle">{item.english_angle}</p>
-                        <p className="intel-time">Expected: {item.timeframe}</p>
+                  crossLanguage.analysis && crossLanguage.analysis.map((item, i) => (
+                    <div key={i} className="intel-card">
+                      <div className="intel-header">
+                        <span className="intel-trend">{item.trend}</span>
+                        <span className={"intel-badge badge-" + item.crossover_potential.toLowerCase()}>{item.crossover_potential} crossover</span>
                       </div>
-                    ))}
-                  </div>
-                ) : <p className="empty">Loading cross-language data...</p>}
+                      <p className="intel-lang">{item.language}</p>
+                      <p className="intel-reason">{item.reason}</p>
+                      <p className="intel-angle">{item.english_angle}</p>
+                    </div>
+                  ))
+                ) : <p className="empty">Loading...</p>}
               </div>
-
               <div className="intel-section">
-                <h3 className="section-label">Trend Time Machine</h3>
+                <h3 className="section-label">Time Machine</h3>
                 {timeMachine ? (
-                  <div>
-                    {timeMachine.cycling_trends && timeMachine.cycling_trends.map((trend, i) => (
-                      <div key={i} className="intel-card">
-                        <div className="intel-header">
-                          <span className="intel-trend">{trend.trend}</span>
-                          <span className={"intel-badge badge-" + trend.comeback_likelihood.toLowerCase()}>{trend.comeback_likelihood} comeback</span>
-                        </div>
-                        <p className="intel-reason">{trend.why}</p>
-                        <p className="intel-time">Prepare by: {trend.prepare_by}</p>
+                  timeMachine.cycling_trends && timeMachine.cycling_trends.map((trend, i) => (
+                    <div key={i} className="intel-card">
+                      <div className="intel-header">
+                        <span className="intel-trend">{trend.trend}</span>
+                        <span className={"intel-badge badge-" + trend.comeback_likelihood.toLowerCase()}>{trend.comeback_likelihood} comeback</span>
                       </div>
-                    ))}
-                  </div>
-                ) : <p className="empty">Loading time machine data...</p>}
+                      <p className="intel-reason">{trend.why}</p>
+                      <p className="intel-time">Prepare by: {trend.prepare_by}</p>
+                    </div>
+                  ))
+                ) : <p className="empty">Loading...</p>}
               </div>
-
               <div className="intel-section">
-                <h3 className="section-label">Best Niches Right Now</h3>
+                <h3 className="section-label">Best Niches</h3>
                 {niches.length > 0 ? niches.map((niche, i) => (
                   <div key={i} className="intel-card">
                     <div className="intel-header">
@@ -513,14 +765,13 @@ export default function App() {
                     <p className="intel-reason">{niche.why_opportunity}</p>
                     <div className="intel-meta">
                       <span>Competition: {niche.competition_level}</span>
-                      <span>Growth time: {niche.time_to_grow}</span>
+                      <span>{niche.time_to_grow}</span>
                     </div>
                   </div>
-                )) : <p className="empty">Loading niches...</p>}
+                )) : <p className="empty">Loading...</p>}
               </div>
-
               <div className="intel-section">
-                <h3 className="section-label">Monetization Intelligence</h3>
+                <h3 className="section-label">Monetization</h3>
                 {monetization ? (
                   <div>
                     <div className="intel-card">
@@ -537,7 +788,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                ) : <p className="empty">Loading monetization data...</p>}
+                ) : <p className="empty">Loading...</p>}
               </div>
             </div>
           </div>
@@ -554,7 +805,7 @@ export default function App() {
               <div className="loading-box">
                 <div className="pulse"></div>
                 <p>Generating your full content package...</p>
-                <p className="loading-sub">Script, hooks, blueprint, production guide and more</p>
+                <p className="loading-sub">Script, blueprint, production guide, multiplatform and more</p>
               </div>
             ) : contentPackage ? (
               <div className="content-studio">
@@ -567,24 +818,38 @@ export default function App() {
                       <span className="urgency-tag" style={{ color: URGENCY_COLORS[selectedVideo.urgency], background: URGENCY_BG[selectedVideo.urgency] }}>{selectedVideo.urgency}</span>
                       <span>Score: {selectedVideo.opportunity_score}/100</span>
                       <span>{contentPackage.difficulty} difficulty</span>
-                      <span>Expires: {contentPackage.expiry}</span>
                     </div>
                   </div>
                 </div>
-
+                <div className="generate-video-section">
+                  <button onClick={generateVideo} className="generate-btn" disabled={videoGenerating}>
+                    {videoGenerating ? "Generating Video... (1-2 mins)" : "Generate Video Automatically"}
+                  </button>
+                  {videoGenerating && (
+                    <div className="video-progress">
+                      <div className="pulse"></div>
+                      <p>Fetching images, generating voiceover, assembling video...</p>
+                    </div>
+                  )}
+                  {videoUrl && (
+                    <div className="video-result">
+                      <video src={videoUrl} controls className="generated-video" />
+                      <a href={videoUrl} download={"trend_video_" + selectedVideo.id + ".mp4"} className="download-btn">Download MP4</a>
+                    </div>
+                  )}
+                </div>
                 <div className="content-tabs">
-                  {["script", "titles", "production", "blueprint", "insights"].map(tab => (
+                  {["script", "titles", "multiplatform", "production", "blueprint", "insights"].map(tab => (
                     <button key={tab} className={activeContentTab === tab ? "active" : ""} onClick={() => setActiveContentTab(tab)}>
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      {tab === "multiplatform" ? "Platforms" : tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                   ))}
                 </div>
-
                 {activeContentTab === "script" && (
                   <div className="content-panel">
                     <div className="info-box"><p>{contentPackage.trend_explanation}</p></div>
                     <div className="content-block">
-                      <h4>Hook (First 2 Seconds)</h4>
+                      <h4>Hook</h4>
                       <div className="hook-main">{contentPackage.hook}</div>
                       <h5>Alternative Hooks</h5>
                       {contentPackage.hook_alternatives && contentPackage.hook_alternatives.map((h, i) => (
@@ -601,7 +866,6 @@ export default function App() {
                     </div>
                   </div>
                 )}
-
                 {activeContentTab === "titles" && (
                   <div className="content-panel">
                     <div className="content-block">
@@ -632,7 +896,30 @@ export default function App() {
                     </div>
                   </div>
                 )}
-
+                {activeContentTab === "multiplatform" && multiplatform && (
+                  <div className="content-panel">
+                    <div className="platform-best">
+                      <span className="meta-label">Best Platform Today</span>
+                      <p>{multiplatform.best_platform_today}</p>
+                    </div>
+                    {["youtube", "tiktok", "instagram", "twitter"].map(platform => (
+                      multiplatform[platform] && (
+                        <div key={platform} className="platform-card">
+                          <h4 className="platform-name">{platform.toUpperCase()}</h4>
+                          {multiplatform[platform].title && <div className="platform-field"><span className="field-label">Title</span><p>{multiplatform[platform].title}</p></div>}
+                          {multiplatform[platform].caption && <div className="platform-field"><span className="field-label">Caption</span><p>{multiplatform[platform].caption}</p></div>}
+                          {multiplatform[platform].tweet && <div className="platform-field"><span className="field-label">Tweet</span><p>{multiplatform[platform].tweet}</p></div>}
+                          <div className="platform-tags">
+                            {(multiplatform[platform].hashtags || []).map((tag, i) => (
+                              <span key={i} className="hashtag">#{tag}</span>
+                            ))}
+                          </div>
+                          {multiplatform[platform].best_time && <p className="platform-time">Best time: {multiplatform[platform].best_time}</p>}
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
                 {activeContentTab === "production" && productionGuide && (
                   <div className="content-panel">
                     <div className="prod-meta">
@@ -646,10 +933,7 @@ export default function App() {
                       {productionGuide.filming_steps && productionGuide.filming_steps.map((step, i) => (
                         <div key={i} className="step-item">
                           <div className="step-num">{step.step}</div>
-                          <div className="step-content">
-                            <p className="step-action">{step.action}</p>
-                            <p className="step-tip">Tip: {step.tip}</p>
-                          </div>
+                          <div className="step-content"><p className="step-action">{step.action}</p><p className="step-tip">Tip: {step.tip}</p></div>
                         </div>
                       ))}
                     </div>
@@ -658,28 +942,18 @@ export default function App() {
                       {productionGuide.editing_steps && productionGuide.editing_steps.map((step, i) => (
                         <div key={i} className="step-item">
                           <div className="step-num">{step.step}</div>
-                          <div className="step-content">
-                            <p className="step-action">{step.action}</p>
-                            <p className="step-tip">Tip: {step.tip}</p>
-                          </div>
+                          <div className="step-content"><p className="step-action">{step.action}</p><p className="step-tip">Tip: {step.tip}</p></div>
                         </div>
                       ))}
                     </div>
                     <div className="content-block">
                       <h4>Upload Checklist</h4>
                       {productionGuide.upload_checklist && productionGuide.upload_checklist.map((item, i) => (
-                        <div key={i} className="checklist-item"><span className="check">✓</span><span>{item}</span></div>
-                      ))}
-                    </div>
-                    <div className="content-block">
-                      <h4>Common Mistakes to Avoid</h4>
-                      {productionGuide.common_mistakes && productionGuide.common_mistakes.map((item, i) => (
-                        <div key={i} className="mistake-item"><span className="x-mark">✕</span><span>{item}</span></div>
+                        <div key={i} className="checklist-item"><span className="check">checkmark</span><span>{item}</span></div>
                       ))}
                     </div>
                   </div>
                 )}
-
                 {activeContentTab === "blueprint" && blueprint && (
                   <div className="content-panel">
                     <div className="prod-meta">
@@ -697,7 +971,6 @@ export default function App() {
                             <p className="scene-visual"><strong>Visual:</strong> {scene.visual}</p>
                             <p className="scene-audio"><strong>Audio:</strong> {scene.audio}</p>
                             {scene.text_overlay && <p className="scene-text"><strong>Text:</strong> {scene.text_overlay}</p>}
-                            <p className="scene-action"><strong>Action:</strong> {scene.action}</p>
                           </div>
                         </div>
                       ))}
@@ -707,21 +980,12 @@ export default function App() {
                       {blueprint.broll_needed && blueprint.broll_needed.map((broll, i) => (
                         <div key={i} className="broll-item">
                           <p>{broll.description}</p>
-                          <a href={"https://www.pexels.com/search/" + encodeURIComponent(broll.search_term)} target="_blank" rel="noreferrer" className="broll-link">
-                            Search on {broll.free_source} →
-                          </a>
+                          <a href={"https://www.pexels.com/search/" + encodeURIComponent(broll.search_term)} target="_blank" rel="noreferrer" className="broll-link">Search on {broll.free_source} →</a>
                         </div>
-                      ))}
-                    </div>
-                    <div className="content-block">
-                      <h4>Final Checklist</h4>
-                      {blueprint.final_checklist && blueprint.final_checklist.map((item, i) => (
-                        <div key={i} className="checklist-item"><span className="check">✓</span><span>{item}</span></div>
                       ))}
                     </div>
                   </div>
                 )}
-
                 {activeContentTab === "insights" && (
                   <div className="content-panel">
                     <div className="insights-grid">
@@ -731,20 +995,13 @@ export default function App() {
                       <div className="insight-card"><h5>Evergreen Score</h5><p>{contentPackage.evergreen_score}/10</p></div>
                     </div>
                     <div className="content-block">
-                      <h4>Series Potential</h4>
-                      <p>{contentPackage.series_potential}</p>
-                    </div>
-                    <div className="content-block">
                       <h4>Unique Angles Nobody Is Covering</h4>
                       {contentPackage.similar_angles && contentPackage.similar_angles.map((angle, i) => (
                         <div key={i} className="angle-item"><span className="angle-num">#{i + 1}</span><span>{angle}</span></div>
                       ))}
                     </div>
                     {contentPackage.controversy_warning && (
-                      <div className="warning-box">
-                        <h5>Controversy Warning</h5>
-                        <p>{contentPackage.controversy_warning}</p>
-                      </div>
+                      <div className="warning-box"><h5>Controversy Warning</h5><p>{contentPackage.controversy_warning}</p></div>
                     )}
                   </div>
                 )}
@@ -758,68 +1015,76 @@ export default function App() {
             <div className="tools-grid">
               <div className="tool-section">
                 <h3 className="section-label">Script Improver</h3>
-                <textarea
-                  className="tool-input"
-                  placeholder="Paste your script here..."
-                  value={scriptInput}
-                  onChange={e => setScriptInput(e.target.value)}
-                  rows={6}
-                />
-                <button onClick={improveScript} className="tool-btn" disabled={scriptLoading}>
-                  {scriptLoading ? "Improving..." : "Improve My Script"}
-                </button>
+                <textarea className="tool-input" placeholder="Paste your script here..." value={scriptInput} onChange={e => setScriptInput(e.target.value)} rows={5} />
+                <button onClick={improveScript} className="tool-btn" disabled={scriptLoading}>{scriptLoading ? "Improving..." : "Improve Script"}</button>
                 {improvedScript && (
                   <div className="tool-result">
-                    <div className="content-block">
-                      <h4>Improved Script</h4>
-                      <div className="script-box">{improvedScript.improved_script}</div>
-                    </div>
-                    <div className="content-block">
-                      <h4>Changes Made</h4>
-                      {improvedScript.changes_made && improvedScript.changes_made.map((c, i) => (
-                        <div key={i} className="checklist-item"><span className="check">✓</span><span>{c}</span></div>
-                      ))}
-                    </div>
-                    <div className="content-block">
-                      <h4>Why It's Better</h4>
-                      <p>{improvedScript.why_better}</p>
-                    </div>
+                    <div className="content-block"><h4>Improved Script</h4><div className="script-box">{improvedScript.improved_script}</div></div>
+                    <div className="content-block"><h4>Changes Made</h4>{improvedScript.changes_made && improvedScript.changes_made.map((c, i) => (<div key={i} className="checklist-item"><span className="check">checkmark</span><span>{c}</span></div>))}</div>
                   </div>
                 )}
               </div>
-
               <div className="tool-section">
                 <h3 className="section-label">Content Repurposer</h3>
-                <input
-                  className="tool-input-line"
-                  placeholder="Enter video title to repurpose..."
-                  value={repurposeInput}
-                  onChange={e => setRepurposeInput(e.target.value)}
-                />
-                <button onClick={repurposeContent} className="tool-btn" disabled={repurposeLoading}>
-                  {repurposeLoading ? "Repurposing..." : "Repurpose Content"}
-                </button>
+                <input className="tool-input-line" placeholder="Enter video title to repurpose..." value={repurposeInput} onChange={e => setRepurposeInput(e.target.value)} />
+                <button onClick={repurposeContent} className="tool-btn" disabled={repurposeLoading}>{repurposeLoading ? "Repurposing..." : "Repurpose Content"}</button>
                 {repurposed && (
                   <div className="tool-result">
                     <div className="content-block">
                       <h4>3 Shorts Angles</h4>
                       {repurposed.shorts_angles && repurposed.shorts_angles.map((angle, i) => (
-                        <div key={i} className="repurpose-angle">
-                          <p className="angle-title">{angle.angle}</p>
-                          <p className="angle-hook">{angle.hook}</p>
-                        </div>
+                        <div key={i} className="repurpose-angle"><p className="angle-title">{angle.angle}</p><p className="angle-hook">{angle.hook}</p></div>
                       ))}
                     </div>
-                    <div className="content-block">
-                      <h4>Twitter Thread</h4>
-                      {repurposed.twitter_thread && repurposed.twitter_thread.map((tweet, i) => (
-                        <div key={i} className="tweet-item">{tweet}</div>
-                      ))}
-                    </div>
-                    <div className="content-block">
-                      <h4>Instagram Caption</h4>
-                      <p>{repurposed.instagram_caption}</p>
-                    </div>
+                    <div className="content-block"><h4>Twitter Thread</h4>{repurposed.twitter_thread && repurposed.twitter_thread.map((tweet, i) => (<div key={i} className="tweet-item">{tweet}</div>))}</div>
+                  </div>
+                )}
+              </div>
+              <div className="tool-section">
+                <h3 className="section-label">Trend Translator</h3>
+                <input className="tool-input-line" placeholder="Enter a trend you don't understand..." value={translateInput} onChange={e => setTranslateInput(e.target.value)} />
+                <button onClick={translateTrend} className="tool-btn" disabled={translateLoading}>{translateLoading ? "Translating..." : "Explain This Trend"}</button>
+                {translated && (
+                  <div className="tool-result">
+                    <div className="info-box"><p>{translated.what_it_is}</p></div>
+                    <div className="content-block"><h4>Why It's Viral</h4><p>{translated.why_viral}</p></div>
+                    <div className="content-block"><h4>How to Explain in Your Video</h4><p>{translated.how_to_explain_in_video}</p></div>
+                  </div>
+                )}
+              </div>
+              <div className="tool-section">
+                <h3 className="section-label">Comment Intelligence</h3>
+                <input className="tool-input-line" placeholder="Paste a YouTube video ID..." value={commentVideoId} onChange={e => setCommentVideoId(e.target.value)} />
+                <button onClick={analyzeComments} className="tool-btn" disabled={commentLoading}>{commentLoading ? "Analyzing..." : "Analyze Comments"}</button>
+                {commentAnalysis && !commentAnalysis.error && (
+                  <div className="tool-result">
+                    <div className="content-block"><h4>Audience Wants</h4>{commentAnalysis.audience_wants && commentAnalysis.audience_wants.map((w, i) => (<div key={i} className="checklist-item"><span className="check">arrow</span><span>{w}</span></div>))}</div>
+                    <div className="content-block"><h4>Content Opportunities</h4>{commentAnalysis.content_opportunities && commentAnalysis.content_opportunities.map((o, i) => (<div key={i} className="checklist-item"><span className="check">checkmark</span><span>{o}</span></div>))}</div>
+                  </div>
+                )}
+              </div>
+              <div className="tool-section">
+                <h3 className="section-label">Personal Brand Builder</h3>
+                <input className="tool-input-line" placeholder="Channel name" value={brandForm.channel_name} onChange={e => setBrandForm({...brandForm, channel_name: e.target.value})} style={{marginBottom: "0.5rem"}} />
+                <input className="tool-input-line" placeholder="Your niche" value={brandForm.niche} onChange={e => setBrandForm({...brandForm, niche: e.target.value})} />
+                <button onClick={buildBrand} className="tool-btn" disabled={brandLoading}>{brandLoading ? "Building..." : "Build My Brand"}</button>
+                {brandResult && (
+                  <div className="tool-result">
+                    {brandResult.brand_identity && (
+                      <div className="content-block">
+                        <h4>Brand Identity</h4>
+                        <p><strong>Tagline:</strong> {brandResult.brand_identity.tagline}</p>
+                        <p><strong>Catchphrase:</strong> {brandResult.brand_identity.catchphrase}</p>
+                      </div>
+                    )}
+                    {brandResult.first_10_videos && (
+                      <div className="content-block">
+                        <h4>First 10 Video Ideas</h4>
+                        {brandResult.first_10_videos.map((v, i) => (
+                          <div key={i} className="checklist-item"><span className="check">#{i+1}</span><span>{v}</span></div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -832,13 +1097,7 @@ export default function App() {
             <div className="competitor-search">
               <h3 className="section-label">Track a Channel</h3>
               <div className="search-row">
-                <input
-                  className="tool-input-line"
-                  placeholder="Search for a YouTube channel..."
-                  value={competitorSearch}
-                  onChange={e => setCompetitorSearch(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && searchCompetitors()}
-                />
+                <input className="tool-input-line" placeholder="Search for a YouTube channel..." value={competitorSearch} onChange={e => setCompetitorSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && searchCompetitors()} />
                 <button onClick={searchCompetitors} className="tool-btn-inline">Search</button>
               </div>
               {competitorResults.length > 0 && (
@@ -846,49 +1105,35 @@ export default function App() {
                   {competitorResults.map((ch, i) => (
                     <div key={i} className="search-result-item">
                       <img src={ch.thumbnail} alt={ch.name} className="ch-thumb" />
-                      <div className="ch-info">
-                        <p className="ch-name">{ch.name}</p>
-                        <p className="ch-desc">{ch.description}</p>
-                      </div>
+                      <div className="ch-info"><p className="ch-name">{ch.name}</p><p className="ch-desc">{ch.description}</p></div>
                       <button onClick={() => addCompetitor(ch)} className="add-btn">Track</button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
-            {competitors.length > 0 && (
+            {competitorData.length > 0 ? (
               <div className="competitors-list">
                 <h3 className="section-label">Tracked Channels ({competitors.length})</h3>
                 {competitorData.map((comp, i) => (
                   <div key={i} className="competitor-card">
                     <div className="comp-header">
                       <img src={comp.channel.thumbnail} alt={comp.channel.name} className="comp-thumb" />
-                      <div className="comp-info">
-                        <h4>{comp.channel.name}</h4>
-                        <p>Total views (recent): {Number(comp.total_views).toLocaleString()}</p>
-                      </div>
+                      <div className="comp-info"><h4>{comp.channel.name}</h4><p>{Number(comp.total_views).toLocaleString()} total views</p></div>
                       <button onClick={() => removeCompetitor(comp.channel.id)} className="remove-btn">Remove</button>
                     </div>
                     <div className="comp-videos">
                       {comp.recent_videos && comp.recent_videos.map((video, j) => (
                         <div key={j} className="comp-video">
                           <img src={video.thumbnail} alt={video.title} className="comp-video-thumb" />
-                          <div className="comp-video-info">
-                            <p>{video.title}</p>
-                            <span>{Number(video.views).toLocaleString()} views</span>
-                          </div>
+                          <div className="comp-video-info"><p>{video.title}</p><span>{Number(video.views).toLocaleString()} views</span></div>
                         </div>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-
-            {competitors.length === 0 && (
-              <p className="empty">Search for channels above to start tracking competitors</p>
-            )}
+            ) : <p className="empty">Search for channels above to start tracking</p>}
           </div>
         )}
 
@@ -897,88 +1142,45 @@ export default function App() {
             <div className="growth-section">
               <h3 className="section-label">Growth Simulator</h3>
               <div className="growth-form">
-                <div className="form-row">
-                  <label>Current Subscribers</label>
-                  <input type="number" value={growthForm.subscribers} onChange={e => setGrowthForm({...growthForm, subscribers: parseInt(e.target.value)})} className="form-input" />
-                </div>
-                <div className="form-row">
-                  <label>Average Views Per Video</label>
-                  <input type="number" value={growthForm.avg_views} onChange={e => setGrowthForm({...growthForm, avg_views: parseInt(e.target.value)})} className="form-input" />
-                </div>
-                <div className="form-row">
-                  <label>Videos Per Week</label>
-                  <input type="number" value={growthForm.posts_per_week} onChange={e => setGrowthForm({...growthForm, posts_per_week: parseInt(e.target.value)})} className="form-input" />
-                </div>
-                <div className="form-row">
-                  <label>Your Niche</label>
-                  <input type="text" value={growthForm.niche} onChange={e => setGrowthForm({...growthForm, niche: e.target.value})} className="form-input" placeholder="e.g. football, memes, music" />
-                </div>
-                <button onClick={simulateGrowth} className="tool-btn" disabled={growthLoading}>
-                  {growthLoading ? "Simulating..." : "Simulate My Growth"}
-                </button>
+                <div className="form-row"><label>Current Subscribers</label><input type="number" value={growthForm.subscribers} onChange={e => setGrowthForm({...growthForm, subscribers: parseInt(e.target.value)})} className="form-input" /></div>
+                <div className="form-row"><label>Average Views Per Video</label><input type="number" value={growthForm.avg_views} onChange={e => setGrowthForm({...growthForm, avg_views: parseInt(e.target.value)})} className="form-input" /></div>
+                <div className="form-row"><label>Videos Per Week</label><input type="number" value={growthForm.posts_per_week} onChange={e => setGrowthForm({...growthForm, posts_per_week: parseInt(e.target.value)})} className="form-input" /></div>
+                <div className="form-row"><label>Your Niche</label><input type="text" value={growthForm.niche} onChange={e => setGrowthForm({...growthForm, niche: e.target.value})} className="form-input" placeholder="football, memes, music..." /></div>
+                <button onClick={simulateGrowth} className="tool-btn" disabled={growthLoading}>{growthLoading ? "Simulating..." : "Simulate My Growth"}</button>
               </div>
-
               {growthResult && (
                 <div className="growth-result">
-                  <div className="content-block">
-                    <h4>Channel Analysis</h4>
-                    <p>{growthResult.current_analysis}</p>
-                  </div>
+                  <div className="content-block"><h4>Analysis</h4><p>{growthResult.current_analysis}</p></div>
                   <div className="scenarios-grid">
-                    {growthResult.scenarios && growthResult.scenarios.map((scenario, i) => (
+                    {growthResult.scenarios && growthResult.scenarios.map((s, i) => (
                       <div key={i} className="scenario-card">
-                        <h4>{scenario.name}</h4>
-                        <p className="scenario-freq">{scenario.frequency}</p>
+                        <h4>{s.name}</h4>
+                        <p className="scenario-freq">{s.frequency}</p>
                         <div className="scenario-stats">
-                          <div className="stat-row"><span>30 days</span><span>{scenario["30_days"]?.subscribers?.toLocaleString()} subs</span></div>
-                          <div className="stat-row"><span>90 days</span><span>{scenario["90_days"]?.subscribers?.toLocaleString()} subs</span></div>
-                          <div className="stat-row"><span>6 months</span><span>{scenario["6_months"]?.subscribers?.toLocaleString()} subs</span></div>
+                          <div className="stat-row"><span>30 days</span><span>{s["30_days"]?.subscribers?.toLocaleString()} subs</span></div>
+                          <div className="stat-row"><span>90 days</span><span>{s["90_days"]?.subscribers?.toLocaleString()} subs</span></div>
+                          <div className="stat-row"><span>6 months</span><span>{s["6_months"]?.subscribers?.toLocaleString()} subs</span></div>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="content-block">
-                    <h4>Key Milestones</h4>
-                    {growthResult.key_milestones && growthResult.key_milestones.map((m, i) => (
-                      <div key={i} className="milestone-item">
-                        <span className="milestone-name">{m.milestone}</span>
-                        <span className="milestone-when">{m.estimated_when}</span>
-                        <p className="milestone-what">{m.what_changes}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="content-block">
-                    <h4>Biggest Growth Lever</h4>
-                    <p>{growthResult.biggest_growth_lever}</p>
-                  </div>
+                  <div className="content-block"><h4>Biggest Growth Lever</h4><p>{growthResult.biggest_growth_lever}</p></div>
                 </div>
               )}
             </div>
-
             <div className="collab-section">
               <h3 className="section-label">Collab Finder</h3>
               <div className="growth-form">
-                <div className="form-row">
-                  <label>Your Niche</label>
-                  <input type="text" value={collabForm.niche} onChange={e => setCollabForm({...collabForm, niche: e.target.value})} className="form-input" placeholder="e.g. football, memes" />
-                </div>
-                <div className="form-row">
-                  <label>Your Subscribers</label>
-                  <input type="number" value={collabForm.subscribers} onChange={e => setCollabForm({...collabForm, subscribers: parseInt(e.target.value)})} className="form-input" />
-                </div>
-                <button onClick={findCollabs} className="tool-btn" disabled={collabLoading}>
-                  {collabLoading ? "Finding..." : "Find Collab Opportunities"}
-                </button>
+                <div className="form-row"><label>Your Niche</label><input type="text" value={collabForm.niche} onChange={e => setCollabForm({...collabForm, niche: e.target.value})} className="form-input" placeholder="football, memes..." /></div>
+                <div className="form-row"><label>Your Subscribers</label><input type="number" value={collabForm.subscribers} onChange={e => setCollabForm({...collabForm, subscribers: parseInt(e.target.value)})} className="form-input" /></div>
+                <button onClick={findCollabs} className="tool-btn" disabled={collabLoading}>{collabLoading ? "Finding..." : "Find Collab Opportunities"}</button>
               </div>
               {collabResult && collabResult.map((collab, i) => (
                 <div key={i} className="collab-card">
                   <h4>{collab.creator_name}</h4>
                   <p className="collab-why">{collab.why_good_fit}</p>
                   <p className="collab-idea">{collab.collab_idea}</p>
-                  <div className="collab-pitch">
-                    <h5>Ready to Send Pitch:</h5>
-                    <p>{collab.pitch_message}</p>
-                  </div>
+                  <div className="collab-pitch"><h5>Ready to Send Pitch:</h5><p>{collab.pitch_message}</p></div>
                 </div>
               ))}
             </div>
@@ -989,9 +1191,7 @@ export default function App() {
           <div className="view">
             <h3 className="section-label">Hook Database</h3>
             {hooks.length === 0 ? (
-              <div className="empty-content">
-                <p>Your hook database is empty. Generate content packages to automatically save hooks here.</p>
-              </div>
+              <div className="empty-content"><p>Your hook database is empty. Generate content packages to automatically save hooks here.</p></div>
             ) : (
               <div className="hooks-grid">
                 {hooks.map((hook, i) => (
@@ -1012,7 +1212,7 @@ export default function App() {
         {activeView === "health" && (
           <div className="view">
             <h3 className="section-label">API Health Monitor</h3>
-            <button onClick={fetchHealth} className="tool-btn" style={{marginBottom: "1rem"}}>Refresh Health Check</button>
+            <button onClick={fetchHealth} className="tool-btn" style={{marginBottom: "1rem", width: "auto"}}>Refresh</button>
             {health ? (
               <div className="health-grid">
                 {Object.entries(health).filter(([k]) => k !== "checked_at").map(([api, status]) => (
