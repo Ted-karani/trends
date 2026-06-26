@@ -48,7 +48,7 @@ def generate_voiceover(script, output_path):
 
 def generate_video(trend_title, script, search_query=None):
     try:
-        from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
+        from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
         from PIL import Image
         import numpy as np
 
