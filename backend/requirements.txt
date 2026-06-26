@@ -7,6 +7,6 @@ pytrends
 groq
 urllib3==1.26.18
 edge-tts
-ffmpeg-python
+moviepy
 Pillow
 pydantic

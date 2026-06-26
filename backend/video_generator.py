@@ -1,3 +1,4 @@
+import io
 import os
 import requests
 import subprocess
@@ -47,6 +48,10 @@ def generate_voiceover(script, output_path):
 
 def generate_video(trend_title, script, search_query=None):
     try:
+        from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
+        from PIL import Image
+        import numpy as np
+
         work_dir = tempfile.mkdtemp()
         query = search_query or trend_title
 
@@ -54,18 +59,18 @@ def generate_video(trend_title, script, search_query=None):
         images = fetch_pexels_images(query, count=6)
 
         if not images:
-            print("No images found, using fallback")
             images = fetch_pexels_images("trending viral social media", count=6)
+
+        if not images:
+            return None, "Could not fetch images"
 
         image_paths = []
         for i, img_data in enumerate(images):
             img_path = os.path.join(work_dir, f"image_{i}.jpg")
-            with open(img_path, "wb") as f:
-                f.write(img_data)
+            img = Image.open(io.BytesIO(img_data))
+            img = img.resize((1080, 1920), Image.LANCZOS)
+            img.save(img_path)
             image_paths.append(img_path)
-
-        if not image_paths:
-            return None, "Could not fetch images"
 
         print("Generating voiceover...")
         audio_path = os.path.join(work_dir, "voiceover.mp3")
@@ -73,49 +78,27 @@ def generate_video(trend_title, script, search_query=None):
             return None, "Could not generate voiceover"
 
         print("Assembling video...")
+        audio = AudioFileClip(audio_path)
+        total_duration = audio.duration
+        duration_per_image = total_duration / len(image_paths)
+
+        clips = []
+        for img_path in image_paths:
+            clip = ImageClip(img_path, duration=duration_per_image)
+            clips.append(clip)
+
+        video = concatenate_videoclips(clips, method="compose")
+        video = video.set_audio(audio)
+
         output_path = os.path.join(work_dir, "output.mp4")
-
-        duration_per_image = max(3, 45 // len(image_paths))
-
-        filter_parts = []
-        input_args = []
-
-        for i, img_path in enumerate(image_paths):
-            input_args.extend(["-loop", "1", "-t", str(duration_per_image), "-i", img_path])
-
-        input_args.extend(["-i", audio_path])
-
-        audio_index = len(image_paths)
-
-        for i in range(len(image_paths)):
-            filter_parts.append(
-                f"[{i}:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-                f"crop=1080:1920,setsar=1,fps=30[v{i}]"
-            )
-
-        concat_inputs = "".join([f"[v{i}]" for i in range(len(image_paths))])
-        filter_parts.append(f"{concat_inputs}concat=n={len(image_paths)}:v=1:a=0[outv]")
-
-        filter_complex = ";".join(filter_parts)
-
-        cmd = [
-            "ffmpeg", "-y",
-            *input_args,
-            "-filter_complex", filter_complex,
-            "-map", "[outv]",
-            "-map", f"{audio_index}:a",
-            "-c:v", "libx264",
-            "-c:a", "aac",
-            "-shortest",
-            "-movflags", "+faststart",
-            output_path
-        ]
-
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-
-        if result.returncode != 0:
-            print(f"FFmpeg error: {result.stderr}")
-            return None, "Video assembly failed"
+        video.write_videofile(
+            output_path,
+            fps=24,
+            codec="libx264",
+            audio_codec="aac",
+            verbose=False,
+            logger=None
+        )
 
         print("Video generated successfully!")
         return output_path, None
