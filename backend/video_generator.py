@@ -1,10 +1,9 @@
-import io
 import os
+import io
 import requests
-import subprocess
 import tempfile
-import json
-from pathlib import Path
+import asyncio
+from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -32,9 +31,9 @@ def fetch_pexels_images(query, count=5):
 def generate_voiceover(script, output_path):
     try:
         import edge_tts
-        import asyncio
 
         clean_script = script.replace("[PAUSE]", "").replace("\n", " ").strip()
+        clean_script = clean_script[:500]
 
         async def generate():
             communicate = edge_tts.Communicate(clean_script, "en-US-AriaNeural")
@@ -46,59 +45,145 @@ def generate_voiceover(script, output_path):
         print(f"TTS error: {e}")
         return False
 
+def create_text_overlay(img, text, position="bottom"):
+    draw = ImageDraw.Draw(img)
+    width, height = img.size
+
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+    except:
+        font = ImageFont.load_default()
+
+    words = text.split()
+    lines = []
+    current_line = []
+    for word in words:
+        current_line.append(word)
+        test_line = " ".join(current_line)
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        if bbox[2] > width - 80:
+            current_line.pop()
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    lines = lines[:3]
+    line_height = 60
+    total_height = len(lines) * line_height + 40
+
+    if position == "bottom":
+        y_start = height - total_height - 80
+    else:
+        y_start = 80
+
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    overlay_draw.rectangle([40, y_start - 10, width - 40, y_start + total_height], fill=(0, 0, 0, 160))
+    img_rgba = img.convert("RGBA")
+    img_rgba = Image.alpha_composite(img_rgba, overlay)
+    final_draw = ImageDraw.Draw(img_rgba)
+
+    for i, line in enumerate(lines):
+        y = y_start + i * line_height + 10
+        bbox = final_draw.textbbox((0, 0), line, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (width - text_width) // 2
+        final_draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, 255))
+        final_draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+
+    return img_rgba.convert("RGB")
+
 def generate_video(trend_title, script, search_query=None):
     try:
-        from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
-        from PIL import Image
-        import numpy as np
-
+        import subprocess
         work_dir = tempfile.mkdtemp()
         query = search_query or trend_title
 
         print(f"Fetching images for: {query}")
-        images = fetch_pexels_images(query, count=6)
+        images_data = fetch_pexels_images(query, count=6)
 
-        if not images:
-            images = fetch_pexels_images("trending viral social media", count=6)
+        if not images_data:
+            images_data = fetch_pexels_images("trending viral", count=6)
 
-        if not images:
+        if not images_data:
             return None, "Could not fetch images"
-
-        image_paths = []
-        for i, img_data in enumerate(images):
-            img_path = os.path.join(work_dir, f"image_{i}.jpg")
-            img = Image.open(io.BytesIO(img_data))
-            img = img.resize((1080, 1920), Image.LANCZOS)
-            img.save(img_path)
-            image_paths.append(img_path)
 
         print("Generating voiceover...")
         audio_path = os.path.join(work_dir, "voiceover.mp3")
         if not generate_voiceover(script, audio_path):
             return None, "Could not generate voiceover"
 
-        print("Assembling video...")
-        audio = AudioFileClip(audio_path)
-        total_duration = audio.duration
-        duration_per_image = total_duration / len(image_paths)
+        print("Processing images...")
+        script_words = script.replace("[PAUSE]", "").split()
+        words_per_image = max(1, len(script_words) // len(images_data))
 
-        clips = []
-        for img_path in image_paths:
-            clip = ImageClip(img_path, duration=duration_per_image)
-            clips.append(clip)
+        frame_paths = []
+        for i, img_data in enumerate(images_data):
+            img = Image.open(io.BytesIO(img_data))
+            img = img.resize((1080, 1920), Image.LANCZOS)
 
-        video = concatenate_videoclips(clips, method="compose")
-        video = video.set_audio(audio)
+            start_word = i * words_per_image
+            end_word = start_word + words_per_image
+            caption = " ".join(script_words[start_word:end_word])
 
+            if caption:
+                img = create_text_overlay(img, caption)
+
+            frame_path = os.path.join(work_dir, f"frame_{i:04d}.jpg")
+            img.save(frame_path, "JPEG", quality=85)
+            frame_paths.append(frame_path)
+
+        print("Assembling video with ffmpeg...")
         output_path = os.path.join(work_dir, "output.mp4")
-        video.write_videofile(
-            output_path,
-            fps=24,
-            codec="libx264",
-            audio_codec="aac",
-            verbose=False,
-            logger=None
-        )
+
+        duration_per_frame = 5
+        frames_dir = os.path.join(work_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
+
+        expanded_frames = []
+        fps = 24
+        frames_per_image = fps * duration_per_frame
+
+        for i, frame_path in enumerate(frame_paths):
+            for j in range(frames_per_image):
+                new_path = os.path.join(frames_dir, f"frame_{i * frames_per_image + j:06d}.jpg")
+                if j == 0:
+                    import shutil
+                    shutil.copy(frame_path, new_path)
+                else:
+                    os.symlink(frame_path, new_path)
+                expanded_frames.append(new_path)
+
+        ffmpeg_cmd = [
+            "ffmpeg", "-y",
+            "-framerate", str(fps),
+            "-i", os.path.join(frames_dir, "frame_%06d.jpg"),
+            "-i", audio_path,
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            "-shortest",
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
+
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=120)
+
+        if result.returncode != 0:
+            print(f"FFmpeg failed, trying without audio...")
+            ffmpeg_cmd_no_audio = [
+                "ffmpeg", "-y",
+                "-framerate", str(fps),
+                "-i", os.path.join(frames_dir, "frame_%06d.jpg"),
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-t", str(len(frame_paths) * duration_per_frame),
+                output_path
+            ]
+            result2 = subprocess.run(ffmpeg_cmd_no_audio, capture_output=True, text=True, timeout=120)
+            if result2.returncode != 0:
+                return None, "Video assembly failed"
 
         print("Video generated successfully!")
         return output_path, None
