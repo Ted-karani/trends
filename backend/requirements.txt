@@ -12,3 +12,4 @@ imageio==2.9.0
 imageio-ffmpeg==0.4.7
 Pillow
 pydantic
+setuptools
