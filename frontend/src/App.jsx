@@ -19,6 +19,123 @@ const URGENCY_BG = {
   "Watch": "#66666615"
 }
 
+function ClipGuide({ videoId }) {
+  const [guide, setGuide] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchGuide = async () => {
+    if (!videoId) return
+    setLoading(true)
+    try {
+      const res = await axios.get(`${API}/clip-guide`, { params: { video_id: videoId } })
+      setGuide(res.data)
+    } catch (err) { console.error(err) }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (videoId) fetchGuide()
+  }, [videoId])
+
+  if (loading) return (
+    <div className="loading-box">
+      <div className="pulse"></div>
+      <p>Analyzing comments and finding viral moments...</p>
+    </div>
+  )
+
+  if (!guide || guide.error) return (
+    <div className="empty-content">
+      <p>Could not generate clip guide. Try another video.</p>
+      <button onClick={fetchGuide} className="go-btn">Try Again</button>
+    </div>
+  )
+
+  return (
+    <div className="content-panel">
+      <div className="info-box">
+        <p><strong>Video Type:</strong> {guide.video_type}</p>
+        <p style={{marginTop: "0.5rem"}}>{guide.overall_assessment}</p>
+      </div>
+
+      <div className="content-block">
+        <h4>Best Clips to Make</h4>
+        {guide.best_clips && guide.best_clips.map((clip, i) => (
+          <div key={i} className="clip-card">
+            <div className="clip-header">
+              <span className="clip-num">Clip {clip.clip_number}</span>
+              <span className="clip-time">{clip.timestamp_start} → {clip.timestamp_end}</span>
+              <span className={"clip-viral viral-" + clip.viral_potential?.toLowerCase()}>{clip.viral_potential}</span>
+            </div>
+            <p className="clip-title">{clip.clip_title}</p>
+            <p className="clip-why">{clip.why_viral}</p>
+            <div className="clip-hook">
+              <span className="meta-label">Hook</span>
+              <p>{clip.hook}</p>
+            </div>
+            <div className="clip-caption">
+              <span className="meta-label">Caption</span>
+              <p>{clip.caption}</p>
+            </div>
+            {clip.comment_evidence && (
+              <div className="clip-evidence">
+                <span className="meta-label">What Comments Say</span>
+                <p>{clip.comment_evidence}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="content-block">
+        <h4>CapCut Steps</h4>
+        {guide.capcut_steps && guide.capcut_steps.map((step, i) => (
+          <div key={i} className="step-item">
+            <div className="step-num">{i + 1}</div>
+            <div className="step-content"><p className="step-action">{step}</p></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="content-block">
+        <h4>Editing Tips</h4>
+        {guide.editing_tips && guide.editing_tips.map((tip, i) => (
+          <div key={i} className="checklist-item">
+            <span className="check">✓</span><span>{tip}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="content-block">
+        <h4>Post Order</h4>
+        <p>{guide.posting_order}</p>
+      </div>
+
+      <div className="content-block">
+        <h4>Hashtags</h4>
+        <div className="hashtags">
+          {guide.hashtags && guide.hashtags.map((h, i) => (
+            <span key={i} className="hashtag">#{h}</span>
+          ))}
+        </div>
+      </div>
+
+      {guide.timestamp_comments && guide.timestamp_comments.length > 0 && (
+        <div className="content-block">
+          <h4>Viral Timestamp Comments</h4>
+          {guide.timestamp_comments.map((c, i) => (
+            <div key={i} className="timestamp-comment">
+              <span className="ts-time">{c.timestamps.join(", ")}</span>
+              <span className="ts-likes">{c.likes} likes</span>
+              <p className="ts-text">{c.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [activeView, setActiveView] = useState("briefing")
   const [region, setRegion] = useState("KE")
@@ -839,7 +956,7 @@ export default function App() {
                   )}
                 </div>
                 <div className="content-tabs">
-                  {["script", "titles", "multiplatform", "production", "blueprint", "insights"].map(tab => (
+                  {["script", "titles", "multiplatform", "production", "blueprint", "insights", "clipguide"].map(tab => (
                     <button key={tab} className={activeContentTab === tab ? "active" : ""} onClick={() => setActiveContentTab(tab)}>
                       {tab === "multiplatform" ? "Platforms" : tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
@@ -1005,6 +1122,11 @@ export default function App() {
                     )}
                   </div>
                 )}
+
+                {activeContentTab === "clipguide" && (
+                  <ClipGuide videoId={selectedVideo?.id} />
+                )}
+
               </div>
             ) : null}
           </div>

@@ -833,3 +833,104 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .pillar-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #0f0f0f; border-radius: 6px; margin-bottom: 0.3rem; }
 .pillar-name { font-size: 0.82rem; color: #ddd; }
 .pillar-pct { font-size: 0.75rem; color: #ff6600; font-weight: 700; }
+/* CLIP GUIDE */
+.clip-card {
+  background: #0f0f0f;
+  border: 1px solid #1a1a1a;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  border-left: 3px solid #ff6600;
+}
+
+.clip-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.clip-num {
+  background: #ff6600;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+.clip-time {
+  font-size: 0.85rem;
+  color: #ffcc00;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.clip-viral {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  margin-left: auto;
+}
+
+.viral-high { background: #00ff0020; color: #00ff66; }
+.viral-medium { background: #ffcc0020; color: #ffcc00; }
+.viral-low { background: #66666620; color: #888; }
+
+.clip-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.3rem;
+}
+
+.clip-why {
+  font-size: 0.82rem;
+  color: #aaa;
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+
+.clip-hook, .clip-caption, .clip-evidence {
+  background: #111;
+  border-radius: 6px;
+  padding: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.clip-hook p, .clip-caption p, .clip-evidence p {
+  font-size: 0.82rem;
+  color: #ccc;
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.timestamp-comment {
+  background: #0f0f0f;
+  border-radius: 8px;
+  padding: 0.7rem;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid #ffcc00;
+}
+
+.ts-time {
+  font-size: 0.78rem;
+  color: #ffcc00;
+  font-weight: 700;
+  font-family: monospace;
+  margin-right: 0.8rem;
+}
+
+.ts-likes {
+  font-size: 0.72rem;
+  color: #666;
+}
+
+.ts-text {
+  font-size: 0.8rem;
+  color: #ccc;
+  margin-top: 0.3rem;
+  line-height: 1.4;
+}

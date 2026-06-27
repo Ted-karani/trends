@@ -1,3 +1,4 @@
+from clip_guide import generate_clip_guide
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -407,3 +408,7 @@ def notify(category="0", region="KE"):
 def refresh():
     clear_cache()
     return {"status": "Cache cleared!"}
+
+@app.get("/clip-guide")
+def clip_guide(video_id: str):
+    return generate_clip_guide(video_id)
